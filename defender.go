@@ -52,10 +52,23 @@ func (d *Defender) BanList() []*Client {
 	return l
 }
 
+// Client creates or returns existing client
 func (d *Defender) Client(key interface{}) (*Client, bool) {
 	d.Lock()
 	defer d.Unlock()
+	now := time.Now()
+	_, found := d.clients[key]
+
+	if !found {
+		d.clients[key] = &Client{
+			key:     key,
+			limiter: rate.NewLimiter(rate.Every(d.Duration), d.Max),
+			expire:  now.Add(d.Duration * Factor),
+		}
+	}
+
 	client, ok := d.clients[key]
+
 	return client, ok
 }
 
@@ -64,17 +77,7 @@ func (d *Defender) Inc(key interface{}) bool {
 	d.Lock()
 	defer d.Unlock()
 	now := time.Now()
-
-	// Try to retrieve the
-	if _, found := d.clients[key]; !found {
-		d.clients[key] = &Client{
-			key:     key,
-			limiter: rate.NewLimiter(rate.Every(d.Duration), d.Max),
-			expire:  now.Add(d.Duration * Factor),
-		}
-	}
-
-	client := d.clients[key]
+	client, _ := d.Client(key)
 
 	// Check if the client is not banned anymore and the cleanup hasn't been run yet
 	if client.banned && now.After(client.expire) {
