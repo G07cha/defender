@@ -7,8 +7,9 @@ import (
 	"golang.org/x/time/rate"
 )
 
-const Factor = 10
+const factor = 10
 
+// Client is a record specific to each user accessing resource
 type Client struct {
 	limiter *rate.Limiter
 	expire  time.Time
@@ -16,8 +17,13 @@ type Client struct {
 	key     interface{}
 }
 
-func (c *Client) Key() interface{}  { return c.key }
-func (c *Client) Banned() bool      { return c.banned }
+// Key returns unique identifier with which client was initially created
+func (c *Client) Key() interface{} { return c.key }
+
+// Banned returns client's status
+func (c *Client) Banned() bool { return c.banned }
+
+// Expire returns timestamp when client's record is going to expire
 func (c *Client) Expire() time.Time { return c.expire }
 
 // Defender keep tracks if the `Client`s and maintains the banlist
@@ -63,7 +69,7 @@ func (d *Defender) Client(key interface{}) (*Client, bool) {
 		d.clients[key] = &Client{
 			key:     key,
 			limiter: rate.NewLimiter(rate.Every(d.Duration), d.Max),
-			expire:  now.Add(d.Duration * Factor),
+			expire:  now.Add(d.Duration * factor),
 		}
 	}
 
@@ -72,7 +78,7 @@ func (d *Defender) Client(key interface{}) (*Client, bool) {
 	return client, ok
 }
 
-// Increment the number of event for the given client key, returns true if the client just got banned
+// Inc is increments the number of event for the given client key, returns true if the client just got banned
 func (d *Defender) Inc(key interface{}) bool {
 	d.Lock()
 	defer d.Unlock()
@@ -90,7 +96,7 @@ func (d *Defender) Inc(key interface{}) bool {
 	}
 
 	// Update the client expiration
-	client.expire = now.Add(d.Duration * Factor)
+	client.expire = now.Add(d.Duration * factor)
 
 	// Check the rate limiter
 	banned := !client.limiter.AllowN(time.Now(), 1)
@@ -118,9 +124,9 @@ func (d *Defender) Cleanup() {
 	}
 }
 
-// CleanupTask should be run in a goroutime
+// CleanupTask should be run in a go routine
 func (d *Defender) CleanupTask(quit <-chan struct{}) {
-	c := time.Tick(d.Duration * Factor)
+	c := time.Tick(d.Duration * factor)
 	for {
 		select {
 		case <-quit:
