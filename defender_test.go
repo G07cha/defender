@@ -27,6 +27,7 @@ func TestNew(t *testing.T) {
 func TestClient(t *testing.T) {
 	key := "127.0.0.1"
 	instance := New(5, 1*time.Second, 1*time.Hour)
+	instance.Inc(key)
 	client, ok := instance.Client(key)
 
 	if ok != true {
